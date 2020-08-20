@@ -1,0 +1,211 @@
+---
+title: "RR_Prog-1"
+author: "lamcd"
+date: "19/08/2020"
+output: html_document
+---
+Reproducible Research - Programming Assignment 1
+The .csv file is in the working directory
+
+Initializing, reading and converting data - question 1
+
+```{r}
+
+knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls())
+library("knitr")
+require("ggplot2")
+library("plyr")
+
+## read data and take a look at the file
+activity <- read.csv("activity.csv")
+summary(activity)
+
+## convert Date column from char to type date variables
+activity$date <- as.Date(activity$date)
+str(activity)
+
+```
+
+Histo of total number of steps per day - question 2
+Find how many missing values in the activity data
+Remove missing values from activity column and create 'clean' per-day data
+Aggregate the data (steps) by day and plot histogram - question 2
+
+```{r}
+
+## histo of total number of steps per day - question 2
+activity_steps_day <- aggregate(steps ~ date, data = activity, FUN = sum, na.rm = TRUE)
+hist(activity_steps_day$steps, xlab = "Steps per Day", main = "Total number of steps taken per day", col = "green")
+
+## find how many missing values in the activity data
+sum(is.na(activity$steps))
+
+## remove missing values from activity column and create 'clean' per-day data
+activity_rm <- activity[which(!is.na(activity$steps)),]
+
+## aggregate the data (steps) by day and plot histogram - question 2
+perday <- tapply(activity_rm$steps, activity_rm$date, sum)
+hist(perday, 10, main = "Total number of steps taken per day", xlab = "steps per day", col = "green")
+
+```
+
+Calculate and display mean and median of steps-per-day - question 3 
+
+```{r}
+
+mean(perday)
+median(perday)
+
+## to analyse a daily mean activity we will aggregate the data (steps) by interval
+## accross days in the data set
+dailyact <- tapply(activity_rm$steps, activity_rm$interval, mean)
+
+```
+
+Plot the daily average number of steps - question 4
+
+```{r}
+
+## plot the daily average number of steps - question 4
+plot(y = dailyact, x = names(dailyact), type = "l", xlab = "Intervals", 
+     main = "Daily Activity Mean Pattern", ylab = "Average number of steps")
+
+```
+
+Find the 5-minute interval that contains (on average) the maximun number of steps
+and that maximum value - question 5
+
+```{r}
+
+## find the 5-minute interval that contains (on average) the maximun number of steps
+## and that maximum value - question 5
+dailyact[dailyact==max(dailyact)]
+
+## interval 835, with 206.2 steps
+
+```
+Define a strategy for imputing missing data - question 6 (start)
+Determining where the missing values are in the data set
+
+So, all the missing data is in the activity variable
+Furthermore 2304 missing values is a considerable number - 
+approximately 13%, so some fixing is needed.
+An intuitive processe will be to replace the missing values with mean or median
+for the day or the 5-minute interval
+
+To start a new data set is created with missing values replaced by interval means
+act_new <- activity
+act_new[which(is.na(act_new$steps)),1]<-
+  dailyact[as.character(act_new[which(is.na(act_new$steps)),3])]
+
+Checking if there are remaining missing values
+There are no remaining missing values
+
+To decide about a strategy for imputing missing data 2 histos are plotted:
+The original (removing NAs) and the new imputing interval mean - question 6
+perday_new<-tapply(act_new$steps, act_new$date, sum)
+
+```{r}
+
+## define a strategy for imputing missing data - question 6 (start)
+## determining where the missing values are in the data set
+## missing data in the activity (steps) variable:
+sum(is.na(activity$steps))
+## missing data in the complete data set:
+sum(is.na(activity))
+
+## so, all the missing data is in the activity variable
+## furthermore 2304 missing values is a considerable number - 
+## approximately 13%, so some fixing is needed.
+## an intuitive processe will be to replace the missing values with mean or median
+## for the day or the 5-minute interval
+
+## to start a new data set is created with missing values replaced by interval means
+act_new <- activity
+act_new[which(is.na(act_new$steps)),1]<-
+  dailyact[as.character(act_new[which(is.na(act_new$steps)),3])]
+
+## checking if there are remaining missing values
+sum(is.na(act_new))
+## there are no remaining missing values
+
+## to decide about a strategy for imputing missing data 2 histos are plotted:
+## the original (removing NAs) and the new imputing interval mean - question 6
+perday_new<-tapply(act_new$steps, act_new$date, sum)
+
+```
+Histo's with same scale in Y-axis to facilitate comparison - question 7
+Calculate and display mean and median after imputing NAs
+
+So, imputing the missing data had little impact in either mean or median
+
+```{r}
+
+## histo's with same scale in Y-axis to facilitate comparison - question 7
+par(mfrow=c(1,2))
+hist(perday,10, main = "Total number of steps taken per day", xlab = "Steps"
+     , ylim =c(0, 25))
+abline(v = median(perday), col = 4, lwd = 4)
+hist(perday_new,10, main = "Total number of steps taken per day  
+     (missing values replaced with mean of interval)", xlab = "Steps",
+     ylim =c(0, 25))
+abline(v = median(perday_new), col = 4, lwd = 4)
+dev.copy(png, file="plot5.png", height=480, width=480)
+
+## calculate and display mean and median after imputing NAs
+mean(perday_new)
+median(perday_new)
+
+## so, imputing the missing data had little impact in either mean or median
+
+```
+
+Studying the difference between activity during weekdays and weekends - question 8
+to start create a factor with two levels - "weekend" and "weekday"
+split the data into two sets (weekdays - weekends) to make separate plots
+data is still steps over 5-minute interval
+The classification (weekday/weekend) is adapted to the language setting 
+(sunday = domingo / saturday = sabado)
+
+Simple plotting with base system
+
+```{r}
+
+## studying the difference between activity during weekdays and weekends - question 8
+
+## to start create a factor with two levels - "weekend" and "weekday"
+## test adjusted to language: domingo / sabado
+act_new$wd <- weekdays(act_new$date)
+act_new$fwd <- as.factor(c("weekend", "weekday"))
+act_new[act_new$wd == "domingo" | act_new$wd == "sabado" ,5] <- factor("weekend")
+act_new[!(act_new$wd == "domingo" | act_new$wd == "sabado"),5 ] <- factor("weekday")
+
+## split the data into two sets (weekdays - weekends) to make separate plots
+## data is still steps over 5-minute interval
+## simple plotting with base system
+act_new_we <- subset(act_new, fwd == "weekend") 
+act_new_wd <- subset(act_new, fwd == "weekday") 
+dailyact_we <- tapply(act_new_we$steps, act_new_we$interval, mean)
+dailyact_wd <- tapply(act_new_wd$steps, act_new_wd$interval, mean)
+
+par(mfrow=c(2,1))
+plot(y = dailyact_wd, x = names(dailyact_wd), type = "l", xlab = "5-Minute Interval", 
+     main = "Daily Activity Pattern on Weekdays", ylab = "Average number of steps", 
+     xlim = c(0, 2500), ylim = c(0, 250))
+plot(y = dailyact_we, x = names(dailyact_we), type = "l", xlab = "5-Minute Interval", 
+     main = "Daily Activity Pattern on Weekends", ylab = "Average number of steps", 
+     xlim = c(0, 2500), ylim = c(0, 250))
+
+## Analysis
+
+```
+
+
+So, the pattern of activity for weekdays is different from that of weenkends
+On weekdays the activity seems to start earlier
+On weekdays there seems to be a peak of activity in earlier hours then decreases
+On weekends the activity spreads more uniformly across the day
+
+
+
